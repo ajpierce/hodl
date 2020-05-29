@@ -8,9 +8,10 @@ use clap::{App, Arg, SubCommand};
 use std::env;
 
 pub mod api;
-use api::check::get_tick;
+use api::check::{get_tick, Tick};
 
-fn main() {
+#[tokio::main]
+async fn main() {
     let matches = App::new(env!("CARGO_PKG_NAME"))
         .version(env!("CARGO_PKG_VERSION"))
         .author(env!("CARGO_PKG_AUTHORS"))
@@ -23,7 +24,7 @@ fn main() {
                 .arg(
                     Arg::with_name("product")
                         .help("The product-id to check. Defaults to USDBTC")
-                        .short("p"),
+                        .index(1),
                 ),
         )
         .subcommand(SubCommand::with_name("lookback").about("Fetch historical data"))
@@ -32,9 +33,13 @@ fn main() {
 
     if let Some(matches) = matches.subcommand_matches("check") {
         if matches.is_present("product") {
-            get_tick(matches.value_of("product").unwrap());
+            let product = matches.value_of("product").unwrap();
+            let tick: Tick = get_tick(&product).await.unwrap();
+            println!("Tick data for {}: {:#?}", product, tick);
         }
     }
+
+    return ();
 }
 
 /*

@@ -8,8 +8,10 @@ description = "A tool to help you accumulate cryptocurrency through the Coinbase
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
+async-std = { version = "1.2.0", features = ["attributes"] }
 clap = "2.33.1"
 serde = { version = "1.0.110", features = ["derive"] }
 serde_derive = "1.0.110"
-reqwest = "0.10.5"
+reqwest = { version = "0.10.5", features = ["json"] }
 serde_json = "1.0.53"
+tokio = { version = "0.2", features = ["full"] }
