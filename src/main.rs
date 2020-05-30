@@ -1,15 +1,16 @@
+extern crate chrono;
 extern crate clap;
 extern crate reqwest;
 #[macro_use]
 extern crate serde;
 extern crate serde_derive;
+extern crate url;
 
 use clap::{App, Arg, SubCommand};
 use std::env;
 
 pub mod api;
-use api::ticks::get_tick;
-use api::ApiResponse;
+use api::{get_history, get_tick, ApiResponse};
 
 static DEFAULT_PRODUCT: &'static str = "BTC-USD";
 
@@ -23,14 +24,34 @@ async fn main() {
         .subcommand(
             SubCommand::with_name("tick")
                 .about("Print the latest tick (current price/volume) for the given product-id")
-                .version(env!("CARGO_PKG_VERSION"))
                 .arg(
                     Arg::with_name("product-id")
                         .help("The product-id to check. Defaults to BTC-USD")
+                        .default_value(DEFAULT_PRODUCT)
                         .index(1),
                 ),
         )
-        .subcommand(SubCommand::with_name("lookback").about("Fetch historical data"))
+        .subcommand(
+            SubCommand::with_name("history")
+                .about("Fetch historical data")
+                .arg(
+                    Arg::with_name("product-id")
+                        .help("The product-id to check. Defaults to BTC-USD")
+                        .default_value(DEFAULT_PRODUCT)
+                        .index(1),
+                )
+                .arg(
+                    Arg::with_name("start")
+                        .help("Start time in ISO 8601")
+                        .index(2),
+                )
+                .arg(Arg::with_name("end").help("End time in ISO 8601").index(3))
+                .arg(
+                    Arg::with_name("granularity")
+                        .help("Desired timeslice in seconds")
+                        .index(4),
+                ),
+        )
         .subcommand(SubCommand::with_name("transfer").about("Transfer USD to Coinbase Pro"))
         .get_matches();
 
@@ -38,6 +59,23 @@ async fn main() {
         let product = matches.value_of("product-id").unwrap_or(DEFAULT_PRODUCT);
         let response: ApiResponse = get_tick(&product).await.expect("API request failed");
         println!("Tick data for {}: {:#?}", product, response);
+        return ();
+    }
+
+    if let Some(matches) = matches.subcommand_matches("history") {
+        let product = matches.value_of("product-id").unwrap_or(DEFAULT_PRODUCT);
+        let start = matches.value_of("start").unwrap_or("");
+        let end = matches.value_of("end").unwrap_or("");
+        let granularity = matches.value_of("granularity").unwrap_or("");
+        println!(
+            "Printing history! {:?}",
+            get_history(product, start, end, granularity)
+        );
+        /*
+        let response = get_history(product, start, end, granularity)
+            .await
+            .expect("API request failed");
+        */
         return ();
     }
 
