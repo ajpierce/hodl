@@ -8,7 +8,7 @@ use clap::{App, Arg, SubCommand};
 use std::env;
 
 pub mod api;
-use api::check::{get_tick, Tick};
+use api::ticks::get_tick;
 
 #[tokio::main]
 async fn main() {
@@ -34,8 +34,8 @@ async fn main() {
     if let Some(matches) = matches.subcommand_matches("check") {
         if matches.is_present("product") {
             let product = matches.value_of("product").unwrap();
-            let tick: Tick = get_tick(&product).await.unwrap();
-            println!("Tick data for {}: {:#?}", product, tick);
+            let response: api::ApiResponse = get_tick(&product).await.expect("API request failed");
+            println!("Tick data for {}: {:#?}", product, response);
         }
     }
 
