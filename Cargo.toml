@@ -3,7 +3,7 @@ name = "hodl"
 version = "0.1.0"
 edition = "2018"
 authors = ["Andrew J. Pierce <andrew.j.pierce@gmail.com>"]
-description = "A tool to help you accumulate cryptocurrency through the Coinbase Pro API"
+description = "A CLI tool for accumulating cryptocurrency through the Coinbase Pro API"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
