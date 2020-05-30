@@ -9,6 +9,9 @@ use std::env;
 
 pub mod api;
 use api::ticks::get_tick;
+use api::ApiResponse;
+
+static DEFAULT_PRODUCT: &'static str = "BTC-USD";
 
 #[tokio::main]
 async fn main() {
@@ -18,12 +21,12 @@ async fn main() {
         .about(env!("CARGO_PKG_DESCRIPTION"))
         .subcommand(SubCommand::with_name("buy").about("Purchase BTC with USD"))
         .subcommand(
-            SubCommand::with_name("check")
-                .about("Print the current exchange rate")
+            SubCommand::with_name("tick")
+                .about("Print the latest tick (current price/volume) for the given product-id")
                 .version(env!("CARGO_PKG_VERSION"))
                 .arg(
-                    Arg::with_name("product")
-                        .help("The product-id to check. Defaults to USDBTC")
+                    Arg::with_name("product-id")
+                        .help("The product-id to check. Defaults to BTC-USD")
                         .index(1),
                 ),
         )
@@ -31,48 +34,13 @@ async fn main() {
         .subcommand(SubCommand::with_name("transfer").about("Transfer USD to Coinbase Pro"))
         .get_matches();
 
-    if let Some(matches) = matches.subcommand_matches("check") {
-        if matches.is_present("product") {
-            let product = matches.value_of("product").unwrap();
-            let response: api::ApiResponse = get_tick(&product).await.expect("API request failed");
-            println!("Tick data for {}: {:#?}", product, response);
-        }
+    if let Some(matches) = matches.subcommand_matches("tick") {
+        let product = matches.value_of("product-id").unwrap_or(DEFAULT_PRODUCT);
+        let response: ApiResponse = get_tick(&product).await.expect("API request failed");
+        println!("Tick data for {}: {:#?}", product, response);
+        return ();
     }
 
+    println!("Invalid input. Type help for more information");
     return ();
 }
-
-/*
-static USAGE_MSG: &'static str = r#"
-Usage:
-  $ hodl [command] [args]
-
-Valid commands are:
-  + buy - Purcahse BTC with USD
-  + transfer - Transfer USD from bank to Coinbase Pro exchange
-  + check - Print the current exchange rate"#;
-
-fn print_help_for(cmd: &str) {
-    let msg = match cmd {
-        "buy" => String::from(
-            r#"
-The `buy` command is used to purchase BTC.
-Specify the amount (in USD) to purchase with the 2nd argument.
-Usage:
-  $ hodl buy 10     # Will purchase $10.00 USD worth of bitcoin"#,
-        ),
-        _ => format!(
-            "Unknown command: {cmd}.\n{default}",
-            cmd = cmd,
-            default = USAGE_MSG.to_string()
-        ),
-    };
-    println!("{}", msg);
-}
-
-fn main() {
-    let args: Vec<String> = env::args().skip(1).collect();
-    let command = &args.get(0).expect(USAGE_MSG);
-    print_help_for(&command);
-}
-*/
