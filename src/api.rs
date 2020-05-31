@@ -86,9 +86,9 @@ pub async fn get_history(
         .parse::<i64>()
         .expect("Granularity must be a number (in seconds)");
     let num_requests = calc_num_requests(start, end, candle_size);
-
     let mut results: Vec<Candlestick> = Vec::new();
     let client = reqwest::Client::builder().user_agent("hodl").build()?;
+
     for i in 0..num_requests {
         let start_dt = DateTime::parse_from_rfc3339(start).expect("Failed to parse start date");
         let request_start = start_dt + Duration::seconds(i * candle_size * CANDLES_PER_REQUEST);
@@ -107,7 +107,6 @@ pub async fn get_history(
             .json::<super::ApiResponse>()
             .await?
         {
-            println!("Request {}: fetched {} candlesticks", i, v.len());
             results.extend(v);
         };
 
@@ -115,11 +114,13 @@ pub async fn get_history(
         thread::sleep(time::Duration::from_millis(1000));
     }
     // results.flatten();
+    /*
     println!(
         "Succesfully completed {} requests, have {} results",
         num_requests,
         results.len()
     );
+    */
     Ok(results)
 }
 

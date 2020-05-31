@@ -1,5 +1,6 @@
 extern crate chrono;
 extern crate clap;
+extern crate csv;
 extern crate reqwest;
 #[macro_use]
 extern crate serde;
@@ -7,7 +8,8 @@ extern crate serde_derive;
 extern crate url;
 
 use clap::{App, Arg, SubCommand};
-use std::env;
+use csv::Writer;
+use std::{env, io};
 
 pub mod api;
 use api::{get_history, get_tick, ApiResponse};
@@ -68,7 +70,11 @@ async fn main() {
         let end = matches.value_of("end").unwrap_or("");
         let granularity = matches.value_of("granularity").unwrap_or("");
         let candlesticks = get_history(product, start, end, granularity).await.unwrap();
-        println!("Received {} candlesticks", candlesticks.len());
+        let mut wtr = Writer::from_writer(io::stdout());
+        wtr.write_record(&["time", "low", "high", "open", "close", "volume"]);
+        for c in candlesticks {
+            wtr.serialize(c);
+        }
         return ();
     }
 
