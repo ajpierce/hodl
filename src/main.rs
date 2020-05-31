@@ -67,15 +67,8 @@ async fn main() {
         let start = matches.value_of("start").unwrap_or("");
         let end = matches.value_of("end").unwrap_or("");
         let granularity = matches.value_of("granularity").unwrap_or("");
-        println!(
-            "Printing history! {:?}",
-            get_history(product, start, end, granularity).await
-        );
-        /*
-        let response = get_history(product, start, end, granularity)
-            .await
-            .expect("API request failed");
-        */
+        let candlesticks = get_history(product, start, end, granularity).await.unwrap();
+        println!("Received {} candlesticks", candlesticks.len());
         return ();
     }
 

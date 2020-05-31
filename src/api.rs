@@ -27,9 +27,9 @@ pub struct ApiError {
 #[derive(Debug, Deserialize, Serialize)]
 #[serde(untagged)]
 pub enum ApiResponse {
-    Tick(Tick),
     ApiError(ApiError),
     Candlesticks(Vec<Candlestick>),
+    Tick(Tick),
 }
 
 /// Functions for checking the current exchange rate of products on the Coinbase Pro API
@@ -76,20 +76,18 @@ fn calc_num_requests(start: &str, end: &str, candle_size: i64) -> i64 {
     num_requests
 }
 
-// pub async fn get_history(
 pub async fn get_history(
     product_id: &str,
     start: &str,
     end: &str,
     granularity: &str,
-) -> Result<Vec<super::ApiResponse>, reqwest::Error> {
-    // ) -> String {
+) -> Result<Vec<Candlestick>, reqwest::Error> {
     let candle_size = granularity
         .parse::<i64>()
         .expect("Granularity must be a number (in seconds)");
     let num_requests = calc_num_requests(start, end, candle_size);
 
-    let results: Vec<super::ApiResponse> = Vec::new();
+    let mut results: Vec<Candlestick> = Vec::new();
     let client = reqwest::Client::builder().user_agent("hodl").build()?;
     for i in 0..num_requests {
         let start_dt = DateTime::parse_from_rfc3339(start).expect("Failed to parse start date");
@@ -101,20 +99,27 @@ pub async fn get_history(
             &request_end.to_string(),
             granularity,
         );
-        let candlesticks = client
+
+        if let ApiResponse::Candlesticks(v) = client
             .get(&request_url)
             .send()
             .await?
             .json::<super::ApiResponse>()
-            .await?;
+            .await?
+        {
+            println!("Request {}: fetched {} candlesticks", i, v.len());
+            results.extend(v);
+        };
 
         // API is rate limited to 1 request per second
         thread::sleep(time::Duration::from_millis(1000));
-
-        println!("Got the following candlesitcks: {:?}", candlesticks);
-        // results.extend(candlesticks);
     }
-    println!("Succesfully completed {} requests", num_requests);
+    // results.flatten();
+    println!(
+        "Succesfully completed {} requests, have {} results",
+        num_requests,
+        results.len()
+    );
     Ok(results)
 }
 
