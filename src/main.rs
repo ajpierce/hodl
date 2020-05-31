@@ -71,9 +71,11 @@ async fn main() {
         let granularity = matches.value_of("granularity").unwrap_or("");
         let candlesticks = get_history(product, start, end, granularity).await.unwrap();
         let mut wtr = Writer::from_writer(io::stdout());
-        wtr.write_record(&["time", "low", "high", "open", "close", "volume"]);
+        wtr.write_record(&["time", "low", "high", "open", "close", "volume"])
+            .expect("Failed to write CSV header");
         for c in candlesticks {
-            wtr.serialize(c);
+            wtr.serialize(c)
+                .expect("Failed to write candlestick data to CSV");
         }
         return ();
     }
