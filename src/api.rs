@@ -1,8 +1,9 @@
-use chrono::format::ParseError;
 use chrono::{DateTime, Duration};
+use std::{thread, time};
 use url::form_urlencoded::byte_serialize;
 
 static API_URL: &'static str = "https://api.pro.coinbase.com";
+static CANDLES_PER_REQUEST: i64 = 300;
 
 #[derive(Debug, Deserialize, Serialize)]
 pub struct Tick {
@@ -16,6 +17,9 @@ pub struct Tick {
 }
 
 #[derive(Debug, Deserialize, Serialize)]
+pub struct Candlestick(u64, f64, f64, f64, f64, f64);
+
+#[derive(Debug, Deserialize, Serialize)]
 pub struct ApiError {
     message: String,
 }
@@ -25,6 +29,7 @@ pub struct ApiError {
 pub enum ApiResponse {
     Tick(Tick),
     ApiError(ApiError),
+    Candlesticks(Vec<Candlestick>),
 }
 
 /// Functions for checking the current exchange rate of products on the Coinbase Pro API
@@ -59,19 +64,97 @@ fn build_history_url(product_id: &str, start: &str, end: &str, granularity: &str
     )
 }
 
+fn calc_num_requests(start: &str, end: &str, candle_size: i64) -> i64 {
+    let start_date = DateTime::parse_from_rfc3339(start).expect("Failed to parse start date");
+    let end_date = DateTime::parse_from_rfc3339(end).expect("Failed to parse end date");
+    let duration: i64 = (end_date - start_date).num_seconds();
+    let num_requests: i64 = (duration / candle_size) / CANDLES_PER_REQUEST + 1;
+    println!(
+        "Duration is: {} seconds, so we need to make {} requests",
+        duration, num_requests
+    );
+    num_requests
+}
+
 // pub async fn get_history(
-pub fn get_history(
+pub async fn get_history(
     product_id: &str,
     start: &str,
     end: &str,
     granularity: &str,
-    // ) -> Result<super::ApiResponse, reqwest::Error> {
-) -> String {
-    let start_date = DateTime::parse_from_rfc3339(start).expect("Failed to parse start date");
-    let end_date = DateTime::parse_from_rfc3339(end).expect("Failed to parse end date");
-    let duration: Duration = end_date - start_date;
-    println!("Duration is: {:?}", duration);
-    let request_url = build_history_url(product_id, start, end, granularity);
-    println!("My encoded URL is: {}", request_url);
-    request_url
+) -> Result<Vec<super::ApiResponse>, reqwest::Error> {
+    // ) -> String {
+    let candle_size = granularity
+        .parse::<i64>()
+        .expect("Granularity must be a number (in seconds)");
+    let num_requests = calc_num_requests(start, end, candle_size);
+
+    let results: Vec<super::ApiResponse> = Vec::new();
+    let client = reqwest::Client::builder().user_agent("hodl").build()?;
+    for i in 0..num_requests {
+        let start_dt = DateTime::parse_from_rfc3339(start).expect("Failed to parse start date");
+        let request_start = start_dt + Duration::seconds(i * candle_size * CANDLES_PER_REQUEST);
+        let request_end = request_start + Duration::seconds(candle_size * CANDLES_PER_REQUEST);
+        let request_url = build_history_url(
+            product_id,
+            &request_start.to_string(),
+            &request_end.to_string(),
+            granularity,
+        );
+        let candlesticks = client
+            .get(&request_url)
+            .send()
+            .await?
+            .json::<super::ApiResponse>()
+            .await?;
+
+        // API is rate limited to 1 request per second
+        thread::sleep(time::Duration::from_millis(1000));
+
+        println!("Got the following candlesitcks: {:?}", candlesticks);
+        // results.extend(candlesticks);
+    }
+    println!("Succesfully completed {} requests", num_requests);
+    Ok(results)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_calc_num_requets() {
+        assert_eq!(
+            calc_num_requests(
+                "2020-01-01T00:00:00-04:00",
+                "2020-01-01T00:00:01-04:00",
+                300
+            ),
+            1
+        );
+        assert_eq!(
+            calc_num_requests(
+                "2020-01-01T00:00:00-04:00",
+                "2020-01-01T00:05:00-04:00",
+                300
+            ),
+            1
+        );
+        assert_eq!(
+            calc_num_requests(
+                "2020-01-01T00:00:00-04:00",
+                "2020-01-02T00:23:55-04:00",
+                300
+            ),
+            1
+        );
+        assert_eq!(
+            calc_num_requests(
+                "2020-01-01T00:00:00-04:00",
+                "2020-01-02T01:00:00-04:00",
+                300
+            ),
+            2
+        );
+    }
 }

@@ -69,7 +69,7 @@ async fn main() {
         let granularity = matches.value_of("granularity").unwrap_or("");
         println!(
             "Printing history! {:?}",
-            get_history(product, start, end, granularity)
+            get_history(product, start, end, granularity).await
         );
         /*
         let response = get_history(product, start, end, granularity)
