@@ -1,3 +1,4 @@
+extern crate base64;
 extern crate chrono;
 extern crate clap;
 extern crate csv;
@@ -12,7 +13,7 @@ use csv::Writer;
 use std::{env, io};
 
 pub mod api;
-use api::{get_history, get_tick, ApiResponse};
+use api::{get_history, get_tick, print_balances, ApiResponse};
 
 static DEFAULT_PRODUCT: &'static str = "BTC-USD";
 
@@ -22,6 +23,7 @@ async fn main() {
         .version(env!("CARGO_PKG_VERSION"))
         .author(env!("CARGO_PKG_AUTHORS"))
         .about(env!("CARGO_PKG_DESCRIPTION"))
+        .subcommand(SubCommand::with_name("balance").about("Check balances of all accounts"))
         .subcommand(SubCommand::with_name("buy").about("Purchase BTC with USD"))
         .subcommand(
             SubCommand::with_name("tick")
@@ -77,6 +79,11 @@ async fn main() {
             wtr.serialize(c)
                 .expect("Failed to write candlestick data to CSV");
         }
+        return ();
+    }
+
+    if let Some(_matches) = matches.subcommand_matches("balance") {
+        print_balances();
         return ();
     }
 

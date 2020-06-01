@@ -1,5 +1,6 @@
+use base64::decode;
 use chrono::{DateTime, Duration};
-use std::{thread, time};
+use std::{env, thread, time};
 use url::form_urlencoded::byte_serialize;
 
 static API_URL: &'static str = "https://api.pro.coinbase.com";
@@ -30,6 +31,51 @@ pub enum ApiResponse {
     ApiError(ApiError),
     Candlesticks(Vec<Candlestick>),
     Tick(Tick),
+}
+
+/// The `build_request_headers` function is responsible for creating the headers
+/// necessary to make a valid API request to the Coinbase Pro API.
+///
+/// The headers will be returned as a tuple in the following format:
+/// ```
+/// (
+///     CB-ACCESS-KEY,          // API key as a string
+///     CB-ACCESS-SIGN,         // base-64 encoded signature (build in this fn)
+///     CB-ACCESS-TIMESTAMP,    // A tiemstamp of our request
+///     CB-ACCESS-PASSPHRASE,   // The passphrase created at API key creation time
+/// )
+/// ```
+///
+/// Though hyphens are not valid for Rust variable names, they are presented as
+/// such above because those are the header names expected by the Coinbase Pro API.
+fn build_request_headers(request_path: &str) -> &str {
+    let key = match env::var("COINBASE_API_KEY") {
+        Ok(k) => k,
+        Err(_) => {
+            println!("Set the COINBASE_API_KEY environment variable to check account balances");
+            std::process::exit(1);
+        }
+    };
+    let pass = match env::var("COINBASE_API_PASSPHRASE") {
+        Ok(p) => p,
+        Err(_) => {
+            println!(
+                "Set the COINBASE_API_PASSPHRASE environment variable to check account balances"
+            );
+            std::process::exit(1);
+        }
+    };
+    println!("my api key is {}, my passphrase is {}", key, pass);
+    "signature"
+}
+
+pub fn print_balances() {
+    // pub async fn print_balances() {
+    let path = "/accounts";
+    let request_url = format!("{api}/{path}", api = API_URL, path = path);
+    let headers = build_request_headers(path);
+    println!("My headers is: {}", headers);
+    ()
 }
 
 /// Functions for checking the current exchange rate of products on the Coinbase Pro API
