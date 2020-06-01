@@ -113,54 +113,8 @@ pub async fn get_history(
         // API is rate limited to 1 request per second
         thread::sleep(time::Duration::from_millis(1000));
     }
-    // results.flatten();
-    /*
-    println!(
-        "Succesfully completed {} requests, have {} results",
-        num_requests,
-        results.len()
-    );
-    */
     Ok(results)
 }
 
 #[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn test_calc_num_requets() {
-        assert_eq!(
-            calc_num_requests(
-                "2020-01-01T00:00:00-04:00",
-                "2020-01-01T00:00:01-04:00",
-                300
-            ),
-            1
-        );
-        assert_eq!(
-            calc_num_requests(
-                "2020-01-01T00:00:00-04:00",
-                "2020-01-01T00:05:00-04:00",
-                300
-            ),
-            1
-        );
-        assert_eq!(
-            calc_num_requests(
-                "2020-01-01T00:00:00-04:00",
-                "2020-01-02T00:23:55-04:00",
-                300
-            ),
-            1
-        );
-        assert_eq!(
-            calc_num_requests(
-                "2020-01-01T00:00:00-04:00",
-                "2020-01-02T01:00:00-04:00",
-                300
-            ),
-            2
-        );
-    }
-}
+mod tests;
