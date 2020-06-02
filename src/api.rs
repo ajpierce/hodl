@@ -1,5 +1,8 @@
-use base64::decode;
-use chrono::{DateTime, Duration};
+use base64::{decode, encode};
+use chrono::{DateTime, Duration, Utc};
+use crypto::hmac::Hmac;
+use crypto::mac::Mac; // Must be in scope so we can get the hmac result
+use crypto::sha2::Sha256;
 use std::{env, thread, time};
 use url::form_urlencoded::byte_serialize;
 
@@ -48,7 +51,7 @@ pub enum ApiResponse {
 ///
 /// Though hyphens are not valid for Rust variable names, they are presented as
 /// such above because those are the header names expected by the Coinbase Pro API.
-fn build_request_headers(request_path: &str) -> &str {
+fn build_request_headers(request_path: &str) -> (String, String, i64, String) {
     let key = match env::var("COINBASE_API_KEY") {
         Ok(k) => k,
         Err(_) => {
@@ -65,8 +68,19 @@ fn build_request_headers(request_path: &str) -> &str {
             std::process::exit(1);
         }
     };
-    println!("my api key is {}, my passphrase is {}", key, pass);
-    "signature"
+    let hmac_key = decode(&key).expect("Failed to decode base64-coinbase API key");
+    let mut hmac = Hmac::new(Sha256::new(), &hmac_key);
+    let timestamp = Utc::now().timestamp_millis();
+    let message = format!(
+        "{timestamp}{method}{request_path}{body}",
+        timestamp = timestamp,
+        method = "GET",
+        request_path = request_path,
+        body = "{}"
+    );
+    hmac.input(message.as_bytes());
+    let signature = encode(hmac.result().code());
+    (key, signature, timestamp, pass)
 }
 
 pub fn print_balances() {
@@ -74,7 +88,7 @@ pub fn print_balances() {
     let path = "/accounts";
     let request_url = format!("{api}/{path}", api = API_URL, path = path);
     let headers = build_request_headers(path);
-    println!("My headers is: {}", headers);
+    println!("My headers is: {:?}", headers);
     ()
 }
 

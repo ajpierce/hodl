@@ -1,6 +1,7 @@
 extern crate base64;
 extern crate chrono;
 extern crate clap;
+extern crate crypto;
 extern crate csv;
 extern crate reqwest;
 #[macro_use]
