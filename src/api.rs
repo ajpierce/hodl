@@ -51,7 +51,11 @@ pub enum ApiResponse {
 ///
 /// Though hyphens are not valid for Rust variable names, they are presented as
 /// such above because those are the header names expected by the Coinbase Pro API.
-fn build_request_headers(request_path: &str) -> (String, String, i64, String) {
+fn build_request_headers(
+    request_path: &str,
+    method: &str,
+    body: &str,
+) -> (String, String, i64, String) {
     let key = match env::var("COINBASE_API_KEY") {
         Ok(k) => k,
         Err(_) => {
@@ -71,13 +75,7 @@ fn build_request_headers(request_path: &str) -> (String, String, i64, String) {
     let hmac_key = decode(&key).expect("Failed to decode base64-coinbase API key");
     let mut hmac = Hmac::new(Sha256::new(), &hmac_key);
     let timestamp = Utc::now().timestamp_millis();
-    let message = format!(
-        "{timestamp}{method}{request_path}{body}",
-        timestamp = timestamp,
-        method = "GET",
-        request_path = request_path,
-        body = "{}"
-    );
+    let message = format!("{}{}{}{}", timestamp, method, request_path, body,);
     hmac.input(message.as_bytes());
     let signature = encode(hmac.result().code());
     (key, signature, timestamp, pass)
@@ -87,7 +85,7 @@ pub fn print_balances() {
     // pub async fn print_balances() {
     let path = "/accounts";
     let request_url = format!("{api}/{path}", api = API_URL, path = path);
-    let headers = build_request_headers(path);
+    let headers = build_request_headers(path, "GET", "{}");
     println!("My headers is: {:?}", headers);
     ()
 }
