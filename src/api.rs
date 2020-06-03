@@ -1,8 +1,11 @@
 use base64::{decode, encode};
-use chrono::{DateTime, Duration, Utc};
-use crypto::hmac::Hmac;
-use crypto::mac::Mac; // Must be in scope so we can get the hmac result
-use crypto::sha2::Sha256;
+use chrono::{DateTime, Duration};
+use crypto::hmac::Hmac as Hmactwo;
+use crypto::mac::Mac as Mactwo; // Must be in scope so we can get the hmac result
+use crypto::sha2::Sha256 as Sha256two;
+use hmac::{Hmac, Mac};
+use sha2::Sha256;
+use std::time::SystemTime;
 use std::{env, thread, time};
 use url::form_urlencoded::byte_serialize;
 
@@ -24,6 +27,16 @@ pub struct Tick {
 pub struct Candlestick(u64, f64, f64, f64, f64, f64);
 
 #[derive(Debug, Deserialize, Serialize)]
+pub struct Account {
+    id: String,
+    currency: String,
+    balance: String,
+    available: String,
+    hold: String,
+    profile_id: String,
+}
+
+#[derive(Debug, Deserialize, Serialize)]
 pub struct ApiError {
     message: String,
 }
@@ -31,6 +44,8 @@ pub struct ApiError {
 #[derive(Debug, Deserialize, Serialize)]
 #[serde(untagged)]
 pub enum ApiResponse {
+    Account(Account),
+    Accounts(Vec<Account>),
     ApiError(ApiError),
     Candlesticks(Vec<Candlestick>),
     Tick(Tick),
@@ -55,43 +70,71 @@ fn build_request_headers(
     request_path: &str,
     method: &str,
     body: &str,
-) -> (String, String, i64, String) {
+) -> (String, String, u64, String) {
     let key = match env::var("COINBASE_API_KEY") {
         Ok(k) => k,
         Err(_) => {
-            println!("Set the COINBASE_API_KEY environment variable to check account balances");
+            println!("Set the COINBASE_API_KEY environment variable to make this request");
+            std::process::exit(1);
+        }
+    };
+    let secret = match env::var("COINBASE_API_SECRET") {
+        Ok(s) => s,
+        Err(_) => {
+            println!("Set the COINBASE_API_SECRET environment variable to make this request");
             std::process::exit(1);
         }
     };
     let pass = match env::var("COINBASE_API_PASSPHRASE") {
         Ok(p) => p,
         Err(_) => {
-            println!(
-                "Set the COINBASE_API_PASSPHRASE environment variable to check account balances"
-            );
+            println!("Set the COINBASE_API_PASSPHRASE environment variable to make this request");
             std::process::exit(1);
         }
     };
-    let hmac_key = decode(&key).expect("Failed to decode base64-coinbase API key");
-    let mut hmac = Hmac::new(Sha256::new(), &hmac_key);
-    let timestamp = Utc::now().timestamp_millis();
-    let message = format!("{}{}{}{}", timestamp, method, request_path, body,);
+    let timestamp = match SystemTime::now().duration_since(SystemTime::UNIX_EPOCH) {
+        Ok(n) => n.as_secs(),
+        Err(_) => panic!("SystemTime before UNIX EPOCH!"),
+    };
+    let message = format!("{}{}{}{}", timestamp, method, request_path, body);
+    let hmac_key = decode(&secret).expect("Failed to base64 decode Coinbase API secret");
+    println!("my secret: {}", secret);
+    println!("my message: {}", message);
+
+    type HmacSha256 = Hmac<Sha256>;
+    let mut mac = HmacSha256::new_varkey(hmac_key.as_slice()).unwrap();
+    mac.input(message.as_bytes());
+    let mut hmac = Hmactwo::new(Sha256two::new(), &hmac_key);
     hmac.input(message.as_bytes());
-    let signature = encode(hmac.result().code());
+    let signature = encode(mac.result().code());
+    let signature2 = encode(hmac.result().code());
+    println!("signature: {}", signature);
+    println!("signature2: {}", signature2);
     (key, signature, timestamp, pass)
 }
 
-pub fn print_balances() {
-    // pub async fn print_balances() {
+pub async fn print_balances() -> Result<ApiResponse, reqwest::Error> {
     let path = "/accounts";
+    let (cb_access_key, cb_access_sign, cb_access_timestamp, cb_access_passphrase) =
+        build_request_headers(path, "GET", "");
+    let client = reqwest::Client::builder().user_agent("hodl").build()?;
     let request_url = format!("{api}/{path}", api = API_URL, path = path);
-    let headers = build_request_headers(path, "GET", "{}");
-    println!("My headers is: {:?}", headers);
-    ()
+    let response = client
+        .get(&request_url)
+        .header("CB-ACCESS-KEY", cb_access_key)
+        .header("CB-ACCESS-SIGN", cb_access_sign)
+        .header("CB-ACCESS-TIMESTAMP", cb_access_timestamp)
+        .header("CB-ACCESS-PASSPHRASE", cb_access_passphrase)
+        .send()
+        .await?
+        .json::<super::ApiResponse>()
+        .await?;
+    println!("Response: {:#?}", response);
+    Ok(response)
 }
 
 /// Functions for checking the current exchange rate of products on the Coinbase Pro API
-pub async fn get_tick(product_id: &str) -> Result<super::ApiResponse, reqwest::Error> {
+pub async fn get_tick(product_id: &str) -> Result<ApiResponse, reqwest::Error> {
     let request_url = format!(
         "{api}/products/{product_id}/ticker",
         api = API_URL,

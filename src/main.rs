@@ -3,10 +3,12 @@ extern crate chrono;
 extern crate clap;
 extern crate crypto;
 extern crate csv;
+extern crate hmac;
 extern crate reqwest;
 #[macro_use]
 extern crate serde;
 extern crate serde_derive;
+extern crate sha2;
 extern crate url;
 
 use clap::{App, Arg, SubCommand};
@@ -84,7 +86,9 @@ async fn main() {
     }
 
     if let Some(_matches) = matches.subcommand_matches("balance") {
-        print_balances();
+        print_balances()
+            .await
+            .expect("Failed to fetch account balanced");
         return ();
     }
 
