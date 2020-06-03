@@ -3,12 +3,10 @@ extern crate chrono;
 extern crate clap;
 extern crate crypto;
 extern crate csv;
-extern crate hmac;
 extern crate reqwest;
 #[macro_use]
 extern crate serde;
 extern crate serde_derive;
-extern crate sha2;
 extern crate url;
 
 use clap::{App, Arg, SubCommand};

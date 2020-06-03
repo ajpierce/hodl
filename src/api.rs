@@ -1,10 +1,8 @@
 use base64::{decode, encode};
 use chrono::{DateTime, Duration};
-use crypto::hmac::Hmac as Hmactwo;
-use crypto::mac::Mac as Mactwo; // Must be in scope so we can get the hmac result
-use crypto::sha2::Sha256 as Sha256two;
-use hmac::{Hmac, Mac};
-use sha2::Sha256;
+use crypto::hmac::Hmac;
+use crypto::mac::Mac; // Must be in scope so we can get the hmac result
+use crypto::sha2::Sha256;
 use std::time::SystemTime;
 use std::{env, thread, time};
 use url::form_urlencoded::byte_serialize;
@@ -37,6 +35,14 @@ pub struct Account {
 }
 
 #[derive(Debug, Deserialize, Serialize)]
+pub struct Order {
+    size: String,
+    price: String,
+    side: String,
+    product_id: String,
+}
+
+#[derive(Debug, Deserialize, Serialize)]
 pub struct ApiError {
     message: String,
 }
@@ -48,6 +54,8 @@ pub enum ApiResponse {
     Accounts(Vec<Account>),
     ApiError(ApiError),
     Candlesticks(Vec<Candlestick>),
+    Order(Order),
+    Orders(Vec<Order>),
     Tick(Tick),
 }
 
@@ -96,20 +104,13 @@ fn build_request_headers(
         Ok(n) => n.as_secs(),
         Err(_) => panic!("SystemTime before UNIX EPOCH!"),
     };
+
     let message = format!("{}{}{}{}", timestamp, method, request_path, body);
     let hmac_key = decode(&secret).expect("Failed to base64 decode Coinbase API secret");
-    println!("my secret: {}", secret);
-    println!("my message: {}", message);
-
-    type HmacSha256 = Hmac<Sha256>;
-    let mut mac = HmacSha256::new_varkey(hmac_key.as_slice()).unwrap();
-    mac.input(message.as_bytes());
-    let mut hmac = Hmactwo::new(Sha256two::new(), &hmac_key);
+    let mut hmac = Hmac::new(Sha256::new(), &hmac_key);
     hmac.input(message.as_bytes());
-    let signature = encode(mac.result().code());
-    let signature2 = encode(hmac.result().code());
-    println!("signature: {}", signature);
-    println!("signature2: {}", signature2);
+    let signature = encode(hmac.result().code());
+
     (key, signature, timestamp, pass)
 }
 
@@ -118,7 +119,7 @@ pub async fn print_balances() -> Result<ApiResponse, reqwest::Error> {
     let (cb_access_key, cb_access_sign, cb_access_timestamp, cb_access_passphrase) =
         build_request_headers(path, "GET", "");
     let client = reqwest::Client::builder().user_agent("hodl").build()?;
-    let request_url = format!("{api}/{path}", api = API_URL, path = path);
+    let request_url = format!("{api}{path}", api = API_URL, path = path);
     let response = client
         .get(&request_url)
         .header("CB-ACCESS-KEY", cb_access_key)
