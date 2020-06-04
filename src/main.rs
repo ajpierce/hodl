@@ -15,7 +15,7 @@ use std::{env, io};
 
 pub mod api;
 use api::{
-    get_history, get_tick, print_balances, print_payment_methods, ApiResponse,
+    get_history, get_tick, make_deposit, print_balances, print_payment_methods, ApiResponse,
 };
 
 static DEFAULT_PRODUCT: &'static str = "BTC-USD";
@@ -62,7 +62,15 @@ async fn main() {
                         .index(4),
                 ),
         )
-        .subcommand(SubCommand::with_name("deposit").about("Deposit USD into Coinbase Pro"))
+        .subcommand(
+            SubCommand::with_name("deposit")
+                .about("Deposit USD into Coinbase Pro")
+                .arg(
+                    Arg::with_name("amount")
+                        .help("The amount of USD to deposit into Coinbase Pro")
+                        .index(1),
+                ),
+        )
         .get_matches();
 
     if let Some(matches) = matches.subcommand_matches("tick") {
@@ -96,6 +104,33 @@ async fn main() {
     if let Some(_matches) = matches.subcommand_matches("payment-methods") {
         print_payment_methods().await;
         return ();
+    }
+
+    if let Some(matches) = matches.subcommand_matches("deposit") {
+        let amount = match matches.value_of("amount") {
+            Some(s) => match s.parse::<f64>() {
+                Ok(a) => a,
+                _ => {
+                    println!("'{}' is an invalid dollar amount", s);
+                    std::process::exit(1);
+                }
+            },
+            None => {
+                println!("You must enter an amount to deposit");
+                std::process::exit(1);
+            }
+        };
+        println!("Depositing ${} USD into Coinbase...", amount);
+        match make_deposit(&amount).await {
+            Some(r) => {
+                println!("Successfully deposited ${} into Coinbase!", amount);
+                println!("{:#?}", r);
+                std::process::exit(0);
+            }
+            None => {
+                std::process::exit(1);
+            }
+        };
     }
 
     println!("Invalid input. Type help for more information");

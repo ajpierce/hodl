@@ -3,6 +3,7 @@ use chrono::{DateTime, Duration};
 use crypto::hmac::Hmac;
 use crypto::mac::Mac; // Must be in scope so we can get the hmac result
 use crypto::sha2::Sha256;
+use serde_json::Value;
 use std::time::SystemTime;
 use std::{env, thread, time};
 use url::form_urlencoded::byte_serialize;
@@ -35,6 +36,14 @@ pub struct Account {
 }
 
 #[derive(Debug, Deserialize, Serialize)]
+pub struct DepositResponse {
+    id: String,
+    amount: String,
+    currency: String,
+    payout_at: String,
+}
+
+#[derive(Debug, Deserialize, Serialize)]
 pub struct Order {
     size: String,
     price: String,
@@ -55,7 +64,7 @@ pub struct PaymentMethod {
     allow_sell: bool,
     allow_deposit: bool,
     allow_withdraw: bool,
-    limits: serde_json::Value,
+    limits: Value,
 }
 
 #[derive(Debug, Deserialize, Serialize)]
@@ -69,6 +78,7 @@ pub enum ApiResponse {
     Account(Account),
     Accounts(Vec<Account>),
     ApiError(ApiError),
+    DepositResponse(DepositResponse),
     Candlesticks(Vec<Candlestick>),
     Order(Order),
     Orders(Vec<Order>),
@@ -132,9 +142,9 @@ fn build_request_headers(
     (key, signature, timestamp, pass)
 }
 
-async fn make_request(path: &str, method: &str, body: &str) -> Result<ApiResponse, reqwest::Error> {
+async fn get_request(path: &str) -> Result<ApiResponse, reqwest::Error> {
     let (cb_access_key, cb_access_sign, cb_access_timestamp, cb_access_passphrase) =
-        build_request_headers(path, method, body);
+        build_request_headers(path, "GET", "");
     let client = reqwest::Client::builder().user_agent("hodl").build()?;
     let request_url = format!("{api}{path}", api = API_URL, path = path);
     let response = client
@@ -150,9 +160,32 @@ async fn make_request(path: &str, method: &str, body: &str) -> Result<ApiRespons
     Ok(response)
 }
 
+async fn post_request(
+    path: &str,
+    body: String,
+    json: Value,
+) -> Result<ApiResponse, reqwest::Error> {
+    let (cb_access_key, cb_access_sign, cb_access_timestamp, cb_access_passphrase) =
+        build_request_headers(path, "POST", &body[..]);
+    let client = reqwest::Client::builder().user_agent("hodl").build()?;
+    let request_url = format!("{api}{path}", api = API_URL, path = path);
+    let response = client
+        .post(&request_url)
+        .json(&json)
+        .header("CB-ACCESS-KEY", cb_access_key)
+        .header("CB-ACCESS-SIGN", cb_access_sign)
+        .header("CB-ACCESS-TIMESTAMP", cb_access_timestamp)
+        .header("CB-ACCESS-PASSPHRASE", cb_access_passphrase)
+        .send()
+        .await?
+        .json::<super::ApiResponse>()
+        .await?;
+    Ok(response)
+}
+
 pub async fn print_balances() {
     let path = "/accounts";
-    let response = match make_request(path, "GET", "").await.unwrap() {
+    let response = match get_request(path).await.unwrap() {
         ApiResponse::Accounts(a) => a,
         ApiResponse::ApiError(e) => {
             println!("Error message from Coinbase API: {:?}", e.message);
@@ -180,6 +213,48 @@ pub async fn print_payment_methods() {
         }
     };
     println!("Payment methods: {:#?}", response);
+}
+
+pub async fn make_deposit(amount: &f64) -> Option<DepositResponse> {
+    let bank_id = match env::var("BANK_ID") {
+        Ok(k) => k,
+        Err(_) => {
+            println!("You must set the BANK_ID environment variable to make deposits.");
+            println!("Looking for your bank id? Use the 'payment-methods' command");
+            std::process::exit(1);
+        }
+    };
+    let payload = format!(
+        r#"{{
+    "amount": {amount},
+    "currency": "USD",
+    "payment_method_id": "{bank_id}"
+}}"#,
+        amount = amount,
+        bank_id = bank_id
+    );
+    let json: Value = match serde_json::from_str(&payload) {
+        Ok(j) => j,
+        Err(e) => {
+            println!("Failed to parse the following as JSON:");
+            println!("{}", payload);
+            println!("{:?}", e);
+            return None;
+        }
+    };
+    let path = "/deposits/payment-method";
+    let body: String = json.to_string();
+    match post_request(path, body, json).await.unwrap() {
+        ApiResponse::DepositResponse(r) => Some(r),
+        ApiResponse::ApiError(e) => {
+            println!("Deposit failed; error from Coinbase API: {:?}", e.message);
+            None
+        }
+        _ => {
+            println!("Deposit failed for unknown reason");
+            None
+        }
+    }
 }
 
 /// Check the current exchange rate of products on the Coinbase Pro API
