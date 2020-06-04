@@ -114,10 +114,9 @@ fn build_request_headers(
     (key, signature, timestamp, pass)
 }
 
-pub async fn print_balances() -> Result<ApiResponse, reqwest::Error> {
-    let path = "/accounts";
+async fn make_request(path: &str, method: &str, body: &str) -> Result<ApiResponse, reqwest::Error> {
     let (cb_access_key, cb_access_sign, cb_access_timestamp, cb_access_passphrase) =
-        build_request_headers(path, "GET", "");
+        build_request_headers(path, method, body);
     let client = reqwest::Client::builder().user_agent("hodl").build()?;
     let request_url = format!("{api}{path}", api = API_URL, path = path);
     let response = client
@@ -130,8 +129,24 @@ pub async fn print_balances() -> Result<ApiResponse, reqwest::Error> {
         .await?
         .json::<super::ApiResponse>()
         .await?;
-    println!("Response: {:#?}", response);
     Ok(response)
+}
+
+pub async fn print_balances() {
+    let path = "/accounts";
+    let response = match make_request(path, "GET", "").await.unwrap() {
+        ApiResponse::Accounts(a) => a,
+        ApiResponse::ApiError(e) => {
+            println!("Error message from Coinbase API: {:?}", e.message);
+            std::process::exit(1);
+        }
+        _ => {
+            println!("Failed to request account information");
+            std::process::exit(1);
+        }
+    };
+
+    println!("Response: {:#?}", response);
 }
 
 /// Functions for checking the current exchange rate of products on the Coinbase Pro API

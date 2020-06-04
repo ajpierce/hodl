@@ -84,9 +84,7 @@ async fn main() {
     }
 
     if let Some(_matches) = matches.subcommand_matches("balance") {
-        print_balances()
-            .await
-            .expect("Failed to fetch account balanced");
+        print_balances().await;
         return ();
     }
 
