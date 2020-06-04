@@ -14,7 +14,9 @@ use csv::Writer;
 use std::{env, io};
 
 pub mod api;
-use api::{get_history, get_tick, print_balances, ApiResponse};
+use api::{
+    get_history, get_tick, print_balances, print_payment_methods, ApiResponse,
+};
 
 static DEFAULT_PRODUCT: &'static str = "BTC-USD";
 
@@ -25,6 +27,9 @@ async fn main() {
         .author(env!("CARGO_PKG_AUTHORS"))
         .about(env!("CARGO_PKG_DESCRIPTION"))
         .subcommand(SubCommand::with_name("balance").about("Check balances of all accounts"))
+        .subcommand(SubCommand::with_name("payment-methods").about(
+            "Get information about which payment methods (bank accounts) are available to you",
+        ))
         .subcommand(SubCommand::with_name("buy").about("Purchase BTC with USD"))
         .subcommand(
             SubCommand::with_name("tick")
@@ -57,7 +62,7 @@ async fn main() {
                         .index(4),
                 ),
         )
-        .subcommand(SubCommand::with_name("transfer").about("Transfer USD to Coinbase Pro"))
+        .subcommand(SubCommand::with_name("deposit").about("Deposit USD into Coinbase Pro"))
         .get_matches();
 
     if let Some(matches) = matches.subcommand_matches("tick") {
@@ -85,6 +90,11 @@ async fn main() {
 
     if let Some(_matches) = matches.subcommand_matches("balance") {
         print_balances().await;
+        return ();
+    }
+
+    if let Some(_matches) = matches.subcommand_matches("payment-methods") {
+        print_payment_methods().await;
         return ();
     }
 

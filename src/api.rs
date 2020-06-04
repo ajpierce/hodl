@@ -43,6 +43,22 @@ pub struct Order {
 }
 
 #[derive(Debug, Deserialize, Serialize)]
+pub struct PaymentMethod {
+    id: String,
+    #[serde(rename = "type")]
+    type_name: String,
+    name: String,
+    currency: String,
+    primary_buy: bool,
+    primary_sell: bool,
+    allow_buy: bool,
+    allow_sell: bool,
+    allow_deposit: bool,
+    allow_withdraw: bool,
+    limits: serde_json::Value,
+}
+
+#[derive(Debug, Deserialize, Serialize)]
 pub struct ApiError {
     message: String,
 }
@@ -56,6 +72,8 @@ pub enum ApiResponse {
     Candlesticks(Vec<Candlestick>),
     Order(Order),
     Orders(Vec<Order>),
+    PaymentMethod(PaymentMethod),
+    PaymentMethods(Vec<PaymentMethod>),
     Tick(Tick),
 }
 
@@ -145,11 +163,26 @@ pub async fn print_balances() {
             std::process::exit(1);
         }
     };
-
     println!("Response: {:#?}", response);
 }
 
-/// Functions for checking the current exchange rate of products on the Coinbase Pro API
+pub async fn print_payment_methods() {
+    let path = "/payment-methods";
+    let response = match get_request(path).await.unwrap() {
+        ApiResponse::PaymentMethods(a) => a,
+        ApiResponse::ApiError(e) => {
+            println!("Error message from Coinbase API: {:?}", e.message);
+            std::process::exit(1);
+        }
+        _ => {
+            println!("Failed to request account information");
+            std::process::exit(1);
+        }
+    };
+    println!("Payment methods: {:#?}", response);
+}
+
+/// Check the current exchange rate of products on the Coinbase Pro API
 pub async fn get_tick(product_id: &str) -> Result<ApiResponse, reqwest::Error> {
     let request_url = format!(
         "{api}/products/{product_id}/ticker",
