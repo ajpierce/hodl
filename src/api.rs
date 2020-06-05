@@ -110,21 +110,21 @@ fn build_request_headers(
     let key = match env::var("COINBASE_API_KEY") {
         Ok(k) => k,
         Err(_) => {
-            println!("Set the COINBASE_API_KEY environment variable to make this request");
+            eprintln!("Set the COINBASE_API_KEY environment variable to make this request");
             std::process::exit(1);
         }
     };
     let secret = match env::var("COINBASE_API_SECRET") {
         Ok(s) => s,
         Err(_) => {
-            println!("Set the COINBASE_API_SECRET environment variable to make this request");
+            eprintln!("Set the COINBASE_API_SECRET environment variable to make this request");
             std::process::exit(1);
         }
     };
     let pass = match env::var("COINBASE_API_PASSPHRASE") {
         Ok(p) => p,
         Err(_) => {
-            println!("Set the COINBASE_API_PASSPHRASE environment variable to make this request");
+            eprintln!("Set the COINBASE_API_PASSPHRASE environment variable to make this request");
             std::process::exit(1);
         }
     };
@@ -188,11 +188,11 @@ pub async fn print_balances() {
     let response = match get_request(path).await.unwrap() {
         ApiResponse::Accounts(a) => a,
         ApiResponse::ApiError(e) => {
-            println!("Error message from Coinbase API: {:?}", e.message);
+            eprintln!("Error message from Coinbase API: {:?}", e.message);
             std::process::exit(1);
         }
         _ => {
-            println!("Failed to request account information");
+            eprintln!("Failed to request account information");
             std::process::exit(1);
         }
     };
@@ -204,11 +204,11 @@ pub async fn print_payment_methods() {
     let response = match get_request(path).await.unwrap() {
         ApiResponse::PaymentMethods(a) => a,
         ApiResponse::ApiError(e) => {
-            println!("Error message from Coinbase API: {:?}", e.message);
+            eprintln!("Error message from Coinbase API: {:?}", e.message);
             std::process::exit(1);
         }
         _ => {
-            println!("Failed to request account information");
+            eprintln!("Failed to fetch payment methods");
             std::process::exit(1);
         }
     };
@@ -219,8 +219,8 @@ pub async fn make_deposit(amount: &f64) -> Option<DepositResponse> {
     let bank_id = match env::var("BANK_ID") {
         Ok(k) => k,
         Err(_) => {
-            println!("You must set the BANK_ID environment variable to make deposits.");
-            println!("Looking for your bank id? Use the 'payment-methods' command");
+            eprintln!("You must set the BANK_ID environment variable to make deposits.");
+            eprintln!("Looking for your bank id? Use the 'payment-methods' command");
             std::process::exit(1);
         }
     };
@@ -236,9 +236,9 @@ pub async fn make_deposit(amount: &f64) -> Option<DepositResponse> {
     let json: Value = match serde_json::from_str(&payload) {
         Ok(j) => j,
         Err(e) => {
-            println!("Failed to parse the following as JSON:");
-            println!("{}", payload);
-            println!("{:?}", e);
+            eprintln!("Failed to parse the following as JSON:");
+            eprintln!("{}", payload);
+            eprintln!("{:?}", e);
             return None;
         }
     };
@@ -247,11 +247,11 @@ pub async fn make_deposit(amount: &f64) -> Option<DepositResponse> {
     match post_request(path, body, json).await.unwrap() {
         ApiResponse::DepositResponse(r) => Some(r),
         ApiResponse::ApiError(e) => {
-            println!("Deposit failed; error from Coinbase API: {:?}", e.message);
+            eprintln!("Deposit failed; error from Coinbase API: {:?}", e.message);
             None
         }
         _ => {
-            println!("Deposit failed for unknown reason");
+            eprintln!("Deposit failed for unknown reason");
             None
         }
     }
