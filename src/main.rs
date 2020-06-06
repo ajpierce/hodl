@@ -85,15 +85,21 @@ async fn main() {
         let start = matches.value_of("start").unwrap_or("");
         let end = matches.value_of("end").unwrap_or("");
         let granularity = matches.value_of("granularity").unwrap_or("");
-        let candlesticks = get_history(product, start, end, granularity).await.unwrap();
+
         let mut wtr = Writer::from_writer(io::stdout());
         wtr.write_record(&["time", "low", "high", "open", "close", "volume"])
             .expect("Failed to write CSV header");
-        for c in candlesticks {
-            wtr.serialize(c)
-                .expect("Failed to write candlestick data to CSV");
-        }
-        return ();
+        wtr.flush().expect("Failed to flush CSV writer");
+
+        // TODO: Figure out how to pass in our writer
+        match get_history(product, start, end, granularity).await {
+            Err(e) => {
+                eprintln!("History command failed: {:?}", e);
+                std::process::exit(1);
+            }
+            _ => {}
+        };
+        ()
     }
 
     if let Some(_matches) = matches.subcommand_matches("balance") {

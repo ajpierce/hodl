@@ -3,9 +3,10 @@ use chrono::{DateTime, Duration};
 use crypto::hmac::Hmac;
 use crypto::mac::Mac; // Must be in scope so we can get the hmac result
 use crypto::sha2::Sha256;
+use csv::Writer;
 use serde_json::Value;
 use std::time::SystemTime;
-use std::{env, thread, time};
+use std::{env, io, thread, time};
 use url::form_urlencoded::byte_serialize;
 
 static API_URL: &'static str = "https://api.pro.coinbase.com";
@@ -306,13 +307,13 @@ pub async fn get_history(
     start: &str,
     end: &str,
     granularity: &str,
-) -> Result<Vec<Candlestick>, reqwest::Error> {
+) -> Result<(), reqwest::Error> {
     let candle_size = granularity
         .parse::<i64>()
         .expect("Granularity must be a number (in seconds)");
     let num_requests = calc_num_requests(start, end, candle_size);
-    let mut results: Vec<Candlestick> = Vec::new();
     let client = reqwest::Client::builder().user_agent("hodl").build()?;
+    let mut writer = Writer::from_writer(io::stdout());
 
     for i in 0..num_requests {
         let start_dt = DateTime::parse_from_rfc3339(start).expect("Failed to parse start date");
@@ -325,20 +326,25 @@ pub async fn get_history(
             granularity,
         );
 
-        if let ApiResponse::Candlesticks(v) = client
+        if let ApiResponse::Candlesticks(candlesticks) = client
             .get(&request_url)
             .send()
             .await?
             .json::<super::ApiResponse>()
             .await?
         {
-            results.extend(v);
+            for c in candlesticks {
+                writer
+                    .serialize(c)
+                    .expect("Failed to write candlestick to CSV");
+                writer.flush().expect("Failed to flush CSV writer");
+            }
         };
 
         // API is rate limited to 1 request per second
         thread::sleep(time::Duration::from_millis(1000));
     }
-    Ok(results)
+    Ok(())
 }
 
 #[cfg(test)]
