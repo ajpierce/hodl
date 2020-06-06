@@ -4,6 +4,8 @@ use crypto::hmac::Hmac;
 use crypto::mac::Mac; // Must be in scope so we can get the hmac result
 use crypto::sha2::Sha256;
 use csv::Writer;
+use reqwest::header::HeaderMap;
+use reqwest::Client;
 use serde_json::Value;
 use std::time::SystemTime;
 use std::{env, io, thread, time};
@@ -91,23 +93,14 @@ pub enum ApiResponse {
 /// The `build_request_headers` function is responsible for creating the headers
 /// necessary to make a valid API request to the Coinbase Pro API.
 ///
-/// The headers will be returned as a tuple in the following format:
+/// The headers will be returned as a reqwest::header::HeaderMap containing the following headers:
 /// ```
-/// (
-///     CB-ACCESS-KEY,          // API key as a string
-///     CB-ACCESS-SIGN,         // base-64 encoded signature (build in this fn)
-///     CB-ACCESS-TIMESTAMP,    // A tiemstamp of our request
-///     CB-ACCESS-PASSPHRASE,   // The passphrase created at API key creation time
-/// )
+/// CB-ACCESS-KEY          // API key as a string
+/// CB-ACCESS-SIGN         // base-64 encoded signature (build in this fn)
+/// CB-ACCESS-TIMESTAMP    // A tiemstamp of our request
+/// CB-ACCESS-PASSPHRASE   // The passphrase created at API key creation time
 /// ```
-///
-/// Though hyphens are not valid for Rust variable names, they are presented as
-/// such above because those are the header names expected by the Coinbase Pro API.
-fn build_request_headers(
-    request_path: &str,
-    method: &str,
-    body: &str,
-) -> (String, String, u64, String) {
+fn build_request_headers(request_path: &str, method: &str, body: &str) -> Option<HeaderMap> {
     let key = match env::var("COINBASE_API_KEY") {
         Ok(k) => k,
         Err(_) => {
@@ -130,7 +123,7 @@ fn build_request_headers(
         }
     };
     let timestamp = match SystemTime::now().duration_since(SystemTime::UNIX_EPOCH) {
-        Ok(n) => n.as_secs(),
+        Ok(n) => n.as_secs().to_string(),
         Err(_) => panic!("SystemTime before UNIX EPOCH!"),
     };
 
@@ -140,25 +133,21 @@ fn build_request_headers(
     hmac.input(message.as_bytes());
     let signature = encode(hmac.result().code());
 
-    (key, signature, timestamp, pass)
+    let mut headers = HeaderMap::new();
+    headers.append("CB-ACCESS-KEY", key.parse().unwrap());
+    headers.append("CB-ACCESS-SIGN", signature.parse().unwrap());
+    headers.append("CB-ACCESS-TIMESTAMP", timestamp.parse().unwrap());
+    headers.append("CB-ACCESS-PASSPHRASE", pass.parse().unwrap());
+    Some(headers)
 }
 
 async fn get_request(path: &str) -> Result<ApiResponse, reqwest::Error> {
-    let (cb_access_key, cb_access_sign, cb_access_timestamp, cb_access_passphrase) =
-        build_request_headers(path, "GET", "");
-    let client = reqwest::Client::builder().user_agent("hodl").build()?;
+    let headers = build_request_headers(path, "GET", "").unwrap();
+    let client = Client::builder().user_agent("hodl").build()?;
     let request_url = format!("{api}{path}", api = API_URL, path = path);
-    let response = client
-        .get(&request_url)
-        .header("CB-ACCESS-KEY", cb_access_key)
-        .header("CB-ACCESS-SIGN", cb_access_sign)
-        .header("CB-ACCESS-TIMESTAMP", cb_access_timestamp)
-        .header("CB-ACCESS-PASSPHRASE", cb_access_passphrase)
-        .send()
-        .await?
-        .json::<super::ApiResponse>()
-        .await?;
-    Ok(response)
+    let response = client.get(&request_url).headers(headers).send().await?;
+    let data = response.json::<ApiResponse>().await?;
+    Ok(data)
 }
 
 async fn post_request(
@@ -166,22 +155,17 @@ async fn post_request(
     body: String,
     json: Value,
 ) -> Result<ApiResponse, reqwest::Error> {
-    let (cb_access_key, cb_access_sign, cb_access_timestamp, cb_access_passphrase) =
-        build_request_headers(path, "POST", &body[..]);
-    let client = reqwest::Client::builder().user_agent("hodl").build()?;
+    let headers = build_request_headers(path, "POST", &body[..]).unwrap();
+    let client = Client::builder().user_agent("hodl").build()?;
     let request_url = format!("{api}{path}", api = API_URL, path = path);
     let response = client
         .post(&request_url)
         .json(&json)
-        .header("CB-ACCESS-KEY", cb_access_key)
-        .header("CB-ACCESS-SIGN", cb_access_sign)
-        .header("CB-ACCESS-TIMESTAMP", cb_access_timestamp)
-        .header("CB-ACCESS-PASSPHRASE", cb_access_passphrase)
+        .headers(headers)
         .send()
-        .await?
-        .json::<super::ApiResponse>()
         .await?;
-    Ok(response)
+    let data = response.json::<ApiResponse>().await?;
+    Ok(data)
 }
 
 pub async fn print_balances() {
@@ -309,7 +293,7 @@ pub async fn get_history(
         .parse::<i64>()
         .expect("Granularity must be a number (in seconds)");
     let num_requests = calc_num_requests(start, end, candle_size);
-    let client = reqwest::Client::builder().user_agent("hodl").build()?;
+    let client = Client::builder().user_agent("hodl").build()?;
 
     for i in 0..num_requests {
         let start_dt = DateTime::parse_from_rfc3339(start).expect("Failed to parse start date");
