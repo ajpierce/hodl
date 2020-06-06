@@ -12,6 +12,8 @@ base64 = "0.12.1"
 chrono = "0.4.11"
 clap = "2.33.1"
 csv = "1.1.3"
+# We need to bring in our own version of openssl for rpi cross-compilations
+openssl = { version = "0.10", features = ["vendored"] }
 reqwest = { version = "0.10.5", features = ["json"] }
 rust-crypto = "0.2.36"
 serde = { version = "1.0.110", features = ["derive"] }
