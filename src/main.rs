@@ -91,15 +91,14 @@ async fn main() {
             .expect("Failed to write CSV header");
         wtr.flush().expect("Failed to flush CSV writer");
 
-        // TODO: Figure out how to pass in our writer
-        match get_history(product, start, end, granularity).await {
+        match get_history(product, start, end, granularity, wtr).await {
             Err(e) => {
                 eprintln!("History command failed: {:?}", e);
                 std::process::exit(1);
             }
             _ => {}
         };
-        ()
+        return ();
     }
 
     if let Some(_matches) = matches.subcommand_matches("balance") {

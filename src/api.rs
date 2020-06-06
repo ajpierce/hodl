@@ -295,10 +295,6 @@ fn calc_num_requests(start: &str, end: &str, candle_size: i64) -> i64 {
     let end_date = DateTime::parse_from_rfc3339(end).expect("Failed to parse end date");
     let duration: i64 = (end_date - start_date).num_seconds();
     let num_requests: i64 = (duration / candle_size) / CANDLES_PER_REQUEST + 1;
-    println!(
-        "Duration is: {} seconds, so we need to make {} requests",
-        duration, num_requests
-    );
     num_requests
 }
 
@@ -307,13 +303,13 @@ pub async fn get_history(
     start: &str,
     end: &str,
     granularity: &str,
+    mut writer: Writer<io::Stdout>,
 ) -> Result<(), reqwest::Error> {
     let candle_size = granularity
         .parse::<i64>()
         .expect("Granularity must be a number (in seconds)");
     let num_requests = calc_num_requests(start, end, candle_size);
     let client = reqwest::Client::builder().user_agent("hodl").build()?;
-    let mut writer = Writer::from_writer(io::stdout());
 
     for i in 0..num_requests {
         let start_dt = DateTime::parse_from_rfc3339(start).expect("Failed to parse start date");
