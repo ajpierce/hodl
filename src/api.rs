@@ -168,9 +168,9 @@ async fn post_request(
     Ok(data)
 }
 
-pub async fn print_balances() {
+pub async fn print_balance(currency: Option<&str>) {
     let path = "/accounts";
-    let response = match get_request(path).await.unwrap() {
+    let accounts = match get_request(path).await.unwrap() {
         ApiResponse::Accounts(a) => a,
         ApiResponse::ApiError(e) => {
             eprintln!("Error message from Coinbase API: {:?}", e.message);
@@ -181,7 +181,18 @@ pub async fn print_balances() {
             std::process::exit(1);
         }
     };
-    println!("Response: {:#?}", response);
+
+    if let Some(c) = currency {
+        let account = accounts.iter().find(|x| x.currency == c);
+        if let Some(a) = account {
+            println!("{:#?}", a);
+            return ();
+        } else {
+            eprintln!("No account found containing {}", c);
+            std::process::exit(1);
+        }
+    }
+    println!("{:#?}", accounts);
 }
 
 pub async fn print_payment_methods() {
