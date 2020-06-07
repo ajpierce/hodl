@@ -24,12 +24,13 @@ jobs:
           override: true
       - name: Build
         run: cargo build --release
+      - name: Rename binary
+        run: cp target/release/hodl ./hodl-x86_64
       - name: Upload binary to release
         uses: svenstaro/upload-release-action@v1-release
         with:
           repo_token: ${{ secrets.GITHUB_TOKEN }}
-          file: target/release/hodl
-          asset_name: hodl-x86_64
+          file: ./hodl-x86_64
           tag: ${{ github.ref }}
           overwrite: true
           file_glob: true
@@ -53,12 +54,13 @@ jobs:
         run: mkdir .cargo && echo "[target.armv7-unknown-linux-gnueabihf]" >> .cargo/config.toml && echo 'linker = "arm-linux-gnueabihf-gcc"' >> .cargo/config.toml
       - name: Build ARMv7 binary
         run: cargo build --release --target armv7-unknown-linux-gnueabihf
+      - name: Rename binary
+        run: cp target/armv7-unknown-linux-gnueabihf/release/hodl ./hodl-ARMv7
       - name: Upload binary to release
         uses: svenstaro/upload-release-action@v1-release
         with:
           repo_token: ${{ secrets.GITHUB_TOKEN }}
-          file: target/armv7-unknown-linux-gnueabihf/release/hodl
-          asset_name: hodl-ARMv7
+          file: ./hodl-ARMv7
           tag: ${{ github.ref }}
           overwrite: true
           file_glob: true
