@@ -18,7 +18,7 @@ jobs:
         with:
           profile: minimal
           toolchain: stable
-          override: true    
+          override: true
       - name: Build
         run: cargo build --release
       - name: Upload binary to release
@@ -47,12 +47,12 @@ jobs:
           use-cross: true
           command: build
           args: --target armv7-unknown-linux-gnueabihf
-    - name: Upload binary to release
-      uses: svenstaro/upload-release-action@v1-release
-      with:
-        repo_token: ${{ secrets.GITHUB_TOKEN }}
-        file: target/armv7-unknown-linux-gnueabihf/release/hodl
-        asset_name: hodl_armv7
-        tag: ${{ github.ref }}
-        overwrite: true
-        file_glob: true
+      - name: Upload binary to release
+        uses: svenstaro/upload-release-action@v1-release
+        with:
+          repo_token: ${{ secrets.GITHUB_TOKEN }}
+          file: target/armv7-unknown-linux-gnueabihf/release/hodl
+          asset_name: hodl_armv7
+          tag: ${{ github.ref }}
+          overwrite: true
+          file_glob: true
