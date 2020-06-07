@@ -1,8 +1,11 @@
 name: Handle Release
 
 on:
+  push:
+    tags:
+      - 'v*'
   release:
-    types: [ created ]
+    types: [ published ]
 
 env:
   CARGO_TERM_COLOR: always
