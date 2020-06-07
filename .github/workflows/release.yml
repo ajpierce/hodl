@@ -46,17 +46,13 @@ jobs:
           target: armv7-unknown-linux-gnueabihf
           override: true
       - name: Build ARMv7 binary
-        uses: actions-rs/cargo@v1
-        with:
-          use-cross: true
-          command: build
-          args: --target armv7-unknown-linux-gnueabihf
+        run: cargo build --release --target armv7-unknown-linux-gnueabihf
       - name: Upload binary to release
         uses: svenstaro/upload-release-action@v1-release
         with:
           repo_token: ${{ secrets.GITHUB_TOKEN }}
           file: target/armv7-unknown-linux-gnueabihf/release/hodl
-          asset_name: hodl-armv7
+          asset_name: hodl-ARMv7
           tag: ${{ github.ref }}
           overwrite: true
           file_glob: true
