@@ -16,7 +16,7 @@ use std::{env, io};
 pub mod api;
 use api::{get_history, get_tick, make_deposit, print_balance, print_payment_methods, ApiResponse};
 
-static DEFAULT_PRODUCT: &'static str = "BTC-USD";
+static DEFAULT_PRODUCT: &str = "BTC-USD";
 
 #[tokio::main]
 async fn main() {
@@ -83,7 +83,7 @@ async fn main() {
         let product = matches.value_of("product-id").unwrap_or(DEFAULT_PRODUCT);
         let response: ApiResponse = get_tick(&product).await.expect("API request failed");
         println!("Tick data for {}: {:#?}", product, response);
-        return ();
+        return;
     }
 
     if let Some(matches) = matches.subcommand_matches("history") {
@@ -97,25 +97,21 @@ async fn main() {
             .expect("Failed to write CSV header");
         wtr.flush().expect("Failed to flush CSV writer");
 
-        match get_history(product, start, end, granularity, wtr).await {
-            Err(e) => {
-                eprintln!("History command failed: {:?}", e);
-                std::process::exit(1);
-            }
-            _ => {}
+        if let Err(e) = get_history(product, start, end, granularity, wtr).await {
+            eprintln!("History command failed: {:?}", e);
+            std::process::exit(1);
         };
-        return ();
     }
 
     if let Some(matches) = matches.subcommand_matches("balance") {
         let currency = matches.value_of("currency");
         print_balance(currency).await;
-        return ();
+        return;
     }
 
     if let Some(_matches) = matches.subcommand_matches("payment-methods") {
         print_payment_methods().await;
-        return ();
+        return;
     }
 
     if let Some(matches) = matches.subcommand_matches("deposit") {
@@ -145,6 +141,6 @@ async fn main() {
         };
     }
 
-    println!("Invalid input. Type help for more information");
-    return ();
+    eprintln!("Invalid input. Type help for more information");
+    std::process::exit(1);
 }

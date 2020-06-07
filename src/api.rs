@@ -11,7 +11,7 @@ use std::time::SystemTime;
 use std::{env, io, thread, time};
 use url::form_urlencoded::byte_serialize;
 
-static API_URL: &'static str = "https://api.pro.coinbase.com";
+static API_URL: &str = "https://api.pro.coinbase.com";
 static CANDLES_PER_REQUEST: i64 = 300;
 
 #[derive(Debug, Deserialize, Serialize)]
@@ -124,7 +124,10 @@ fn build_request_headers(request_path: &str, method: &str, body: &str) -> Option
     };
     let timestamp = match SystemTime::now().duration_since(SystemTime::UNIX_EPOCH) {
         Ok(n) => n.as_secs().to_string(),
-        Err(_) => panic!("SystemTime before UNIX EPOCH!"),
+        Err(_) => {
+            eprintln!("Current system time falls before the epoch; cannot make valid request");
+            std::process::exit(1);
+        }
     };
 
     let message = format!("{}{}{}{}", timestamp, method, request_path, body);
@@ -186,7 +189,7 @@ pub async fn print_balance(currency: Option<&str>) {
         let account = accounts.iter().find(|x| x.currency == c);
         if let Some(a) = account {
             println!("{:#?}", a);
-            return ();
+            return;
         } else {
             eprintln!("No account found containing {}", c);
             std::process::exit(1);
