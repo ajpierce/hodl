@@ -15,8 +15,8 @@ use std::{env, io};
 
 pub mod api;
 use api::{
-    get_history, get_tick, list_orders, make_deposit, print_balance, print_payment_methods,
-    ApiResponse,
+    get_history, get_tick, list_orders, make_deposit, place_order, print_balance,
+    print_payment_methods, ApiResponse,
 };
 
 static DEFAULT_PRODUCT: &str = "BTC-USD";
@@ -39,7 +39,20 @@ async fn main() {
         .subcommand(SubCommand::with_name("payment-methods").about(
             "Get information about which payment methods (bank accounts) are available to you",
         ))
-        .subcommand(SubCommand::with_name("buy").about("Purchase BTC with USD"))
+        .subcommand(
+            SubCommand::with_name("buy")
+                .about("Purchase cryptocurrency with USD at the current market rate")
+                .arg(
+                    Arg::with_name("currency")
+                        .help("The currency you wish to purchase with USD (ex: BTC)")
+                        .index(1),
+                )
+                .arg(
+                    Arg::with_name("amount")
+                        .help("The amount, in USD, you wish to purchase (ex: 5.25")
+                        .index(2),
+                ),
+        )
         .subcommand(
             SubCommand::with_name("orders")
                 .about("Print the latest tick (current price/volume) for the given product-id")
@@ -152,6 +165,40 @@ async fn main() {
         match make_deposit(&amount).await {
             Some(r) => {
                 println!("Successfully deposited ${} into Coinbase!", amount);
+                println!("{:#?}", r);
+                std::process::exit(0);
+            }
+            None => {
+                std::process::exit(1);
+            }
+        };
+    }
+
+    if let Some(matches) = matches.subcommand_matches("buy") {
+        let currency = match matches.value_of("currency") {
+            Some(s) => s,
+            None => {
+                println!("You must enter a currency to purchase");
+                std::process::exit(1);
+            }
+        };
+        let amount = match matches.value_of("amount") {
+            Some(s) => match s.parse::<f64>() {
+                Ok(a) => a,
+                _ => {
+                    println!("'{}' is an invalid dollar amount", s);
+                    std::process::exit(1);
+                }
+            },
+            None => {
+                println!("You must enter an amount to deposit");
+                std::process::exit(1);
+            }
+        };
+        println!("Purchasing ${} worth of {}...", amount, currency);
+        match place_order(&amount, &currency).await {
+            Some(r) => {
+                println!("Purchase successful!");
                 println!("{:#?}", r);
                 std::process::exit(0);
             }

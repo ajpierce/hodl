@@ -258,6 +258,42 @@ pub async fn make_deposit(amount: &f64) -> Option<DepositResponse> {
     }
 }
 
+pub async fn place_order(amount: &f64, currency: &str) -> Option<Order> {
+    let product_id = &format!("{}-USD", currency)[..];
+    let payload = format!(
+        r#"{{
+    "type": "market",
+    "side": "buy",
+    "product_id": "{product_id}",
+    "funds": {amount}
+}}"#,
+        amount = amount,
+        product_id = product_id
+    );
+    let json: Value = match serde_json::from_str(&payload) {
+        Ok(j) => j,
+        Err(e) => {
+            eprintln!("Failed to parse the following as JSON:");
+            eprintln!("{}", payload);
+            eprintln!("{:?}", e);
+            return None;
+        }
+    };
+    let path = "/orders";
+    let body: String = json.to_string();
+    match post_request(path, body, json).await.unwrap() {
+        ApiResponse::Order(r) => Some(r),
+        ApiResponse::ApiError(e) => {
+            eprintln!("Purcahse failed; error from Coinbase API: {:?}", e.message);
+            None
+        }
+        _ => {
+            eprintln!("Something unexpected happened; log into Coinbase and check");
+            None
+        }
+    }
+}
+
 pub async fn list_orders(product_id: Option<&str>) -> Option<Vec<Order>> {
     let mut path = String::from("/orders");
     if let Some(pid) = product_id {
