@@ -14,7 +14,10 @@ use csv::Writer;
 use std::{env, io};
 
 pub mod api;
-use api::{get_history, get_tick, make_deposit, print_balance, print_payment_methods, ApiResponse};
+use api::{
+    get_history, get_tick, list_orders, make_deposit, print_balance, print_payment_methods,
+    ApiResponse,
+};
 
 static DEFAULT_PRODUCT: &str = "BTC-USD";
 
@@ -37,6 +40,15 @@ async fn main() {
             "Get information about which payment methods (bank accounts) are available to you",
         ))
         .subcommand(SubCommand::with_name("buy").about("Purchase BTC with USD"))
+        .subcommand(
+            SubCommand::with_name("orders")
+                .about("Print the latest tick (current price/volume) for the given product-id")
+                .arg(
+                    Arg::with_name("product-id")
+                        .help("[optional] filter orders by this product-id (ex: BTC-USD)")
+                        .index(1),
+                ),
+        )
         .subcommand(
             SubCommand::with_name("tick")
                 .about("Print the latest tick (current price/volume) for the given product-id")
@@ -111,6 +123,14 @@ async fn main() {
 
     if let Some(_matches) = matches.subcommand_matches("payment-methods") {
         print_payment_methods().await;
+        return;
+    }
+
+    if let Some(matches) = matches.subcommand_matches("orders") {
+        let product_id = matches.value_of("product-id");
+        if let Some(orders) = list_orders(product_id).await {
+            println!("{:#?}", orders);
+        }
         return;
     }
 

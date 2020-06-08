@@ -48,9 +48,11 @@ pub struct DepositResponse {
 
 #[derive(Debug, Deserialize, Serialize)]
 pub struct Order {
+    id: String,
     size: String,
     price: String,
     side: String,
+    status: String,
     product_id: String,
 }
 
@@ -253,6 +255,22 @@ pub async fn make_deposit(amount: &f64) -> Option<DepositResponse> {
             eprintln!("Deposit failed for unknown reason");
             None
         }
+    }
+}
+
+pub async fn list_orders(product_id: Option<&str>) -> Option<Vec<Order>> {
+    let mut path = String::from("/orders");
+    if let Some(pid) = product_id {
+        path = format!("{}?product_id={}", path, pid);
+    }
+    let response = get_request(&path[..]).await.unwrap();
+    match response {
+        ApiResponse::Orders(o) => Some(o),
+        ApiResponse::ApiError(e) => {
+            eprintln!("Failed to fetch order information {:?}", e.message);
+            None
+        }
+        _ => Some(Vec::new()),
     }
 }
 
