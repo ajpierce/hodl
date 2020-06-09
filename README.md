@@ -73,7 +73,14 @@ export BANK_ID=[id of your associated bank account]
 ./hodl-ARMv7 $@
 ```
 
-Then, you can set your crontab to run periodic `deposit` and `buy` commands.
+Then, you can set your crontab to run periodic `deposit` and `buy` commands. For example,
+
+```crontab
+# m h  dom mon dow   command
+0 */72 * * * /home/pi/hodl deposit 30
+7 */18 * * * /home/pi/hodl buy BTC 5
+8 */36 * * * /home/pi/hodl buy ETH 5
+```
 
 Et voila, cost-average investing as a fraction of the cost!
 
