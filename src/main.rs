@@ -36,9 +36,10 @@ async fn main() {
                         .index(1),
                 ),
         )
-        .subcommand(SubCommand::with_name("payment-methods").about(
-            "Get information about which payment methods (bank accounts) are available to you",
-        ))
+        .subcommand(
+            SubCommand::with_name("payment-methods")
+                .about("Get information about available payment methods (bank accounts)"),
+        )
         .subcommand(
             SubCommand::with_name("buy")
                 .about("Purchase cryptocurrency with USD at the current market rate")
