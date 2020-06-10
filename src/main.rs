@@ -165,16 +165,12 @@ async fn main() {
             }
         };
         println!("Depositing ${} USD into Coinbase...", amount);
-        match make_deposit(&amount).await {
-            Some(r) => {
-                println!("Successfully deposited ${} into Coinbase!", amount);
-                println!("{:#?}", r);
-                std::process::exit(0);
-            }
-            None => {
-                std::process::exit(1);
-            }
-        };
+        if let Some(r) = make_deposit(&amount).await {
+            println!("Successfully deposited ${} into Coinbase!", amount);
+            println!("{:#?}", r);
+            return;
+        }
+        std::process::exit(1);
     }
 
     if let Some(matches) = matches.subcommand_matches("buy") {
