@@ -311,19 +311,24 @@ pub async fn list_orders(product_id: Option<&str>) -> Option<Vec<Order>> {
 }
 
 /// Check the current exchange rate of products on the Coinbase Pro API
-pub async fn get_tick(product_id: &str) -> Result<ApiResponse, reqwest::Error> {
-    let request_url = format!(
-        "{api}/products/{product_id}/ticker",
-        api = API_URL,
-        product_id = product_id
-    );
-    println!("Making the following request: {}", request_url);
+pub async fn get_tick(product_id: &str) -> Option<Tick> {
+    let path = format!("/products/{}/ticker", product_id);
 
-    let tick = reqwest::get(&request_url)
-        .await?
-        .json::<super::ApiResponse>()
-        .await?;
-    Ok(tick)
+    let response = get_request(&path[..]).await.unwrap();
+    match response {
+        ApiResponse::Tick(t) => Some(t),
+        ApiResponse::ApiError(e) => {
+            eprintln!(
+                "Failed to fetch tick data for {}: {:?}",
+                product_id, e.message
+            );
+            None
+        }
+        _ => {
+            eprintln!("Failed to fetch tick data for {}", product_id);
+            None
+        }
+    }
 }
 
 fn build_history_url(product_id: &str, start: &str, end: &str, granularity: &str) -> String {

@@ -107,9 +107,10 @@ async fn main() {
 
     if let Some(matches) = matches.subcommand_matches("tick") {
         let product = matches.value_of("product-id").unwrap_or(DEFAULT_PRODUCT);
-        let response: ApiResponse = get_tick(&product).await.expect("API request failed");
-        println!("Tick data for {}: {:#?}", product, response);
-        return;
+        if let Some(tick) = get_tick(&product).await {
+            println!("{} {:#?}", product, tick);
+            return;
+        }
     }
 
     if let Some(matches) = matches.subcommand_matches("history") {
