@@ -128,6 +128,7 @@ async fn main() {
             eprintln!("History command failed: {:?}", e);
             std::process::exit(1);
         };
+        return;
     }
 
     if let Some(matches) = matches.subcommand_matches("balance") {
