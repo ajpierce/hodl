@@ -122,6 +122,14 @@ ETH (ETH-USD), XLM (XLM-USD), etc.
 Note that the number always represents the amount of USD you wish to use, regardless of the product you're buying.
 
 ```
+$ ./hodl balance USD
+```
+
+The `balance` command can be used to show you your balances in Coinbase Pro.
+Replace USD with another currency (BTC, ETH, etc.) to see its balance,
+or omit the currency argument to see balances for every currency.
+
+```
 $ ./hodl history BTC-USD 2019-01-01T00:00:00-04:00 2020-01-01T00:00:00-04:00 300
 ```
 
