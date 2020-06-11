@@ -49,21 +49,20 @@ pub struct DepositResponse {
 #[derive(Debug, Deserialize, Serialize)]
 pub struct Order {
     id: String,
-    created_at: String,
-    executed_value: String,
-    fill_fees: String,
-    filled_size: String,
-    post_only: bool,
-    price: String,
     product_id: String,
-    settled: bool,
     side: String,
-    size: String,
-    status: String,
     stp: String,
-    time_in_force: String,
+    funds: String,
+    specified_funds: String,
     #[serde(rename = "type")]
     type_name: String,
+    post_only: bool,
+    created_at: String,
+    fill_fees: String,
+    filled_size: String,
+    executed_value: String,
+    status: String,
+    settled: bool,
 }
 
 #[derive(Debug, Deserialize, Serialize)]

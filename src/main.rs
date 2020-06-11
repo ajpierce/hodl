@@ -56,7 +56,7 @@ async fn main() {
         )
         .subcommand(
             SubCommand::with_name("orders")
-                .about("Print the latest tick (current price/volume) for the given product-id")
+                .about("See past orders, open and closed")
                 .arg(
                     Arg::with_name("product-id")
                         .help("[optional] filter orders by this product-id (ex: BTC-USD)")
