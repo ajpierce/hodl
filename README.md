@@ -77,12 +77,18 @@ Then, you can set your crontab to run periodic `deposit` and `buy` commands. For
 
 ```crontab
 # m h  dom mon dow   command
-0 */72 * * * /home/pi/hodl deposit 30
-7 */18 * * * /home/pi/hodl buy BTC 5
-8 */36 * * * /home/pi/hodl buy ETH 5
+0   0    */3 *  * /home/pi/hodl deposit 39 2>&1 | tee -a /home/pi/logs/hodl.log
+7   */18 *   *  * /home/pi/hodl buy BTC 6 2>&1 | tee -a /home/pi/logs/hodl.log
+8   0    *   *  * /home/pi/hodl buy ETH 5 2>&1 | tee -a /home/pi/logs/hodl.log
 ```
 
-Et voila, cost-average investing as a fraction of the cost!
+Et voila, cryptocurrency cost-average investing as a fraction of the retail cost!
+
+The crontab above will:
++ Deposit $39 USD into Coinbase every 3 days (every 72 hours)
++ Buy $6 USD worth of BTC every 18 hours
++ Buy $5 USD worth of ETH every day (every 24 hours)
++ Send both standard error and standard output to a log file
 
 ## Usage
 To get the most recent list of commands, use the `help` command:
