@@ -16,7 +16,7 @@ use std::{env, io};
 pub mod api;
 use api::{
     get_history, get_tick, list_orders, make_deposit, place_order, print_balance,
-    print_payment_methods, ApiResponse,
+    print_payment_methods, request_report, ApiResponse,
 };
 
 static DEFAULT_PRODUCT: &str = "BTC-USD";
@@ -74,6 +74,26 @@ async fn main() {
                 ),
         )
         .subcommand(
+            SubCommand::with_name("report")
+                .about("Have coinbase email you a report")
+                .arg(
+                    Arg::with_name("start")
+                        .help("Start time in ISO 8601")
+                        .index(1),
+                )
+                .arg(Arg::with_name("end").help("End time in ISO 8601").index(2))
+                .arg(
+                    Arg::with_name("account-id")
+                        .help("The id of the account for which to generate a report")
+                        .index(3),
+                )
+                .arg(
+                    Arg::with_name("email")
+                        .help("The email address to which the report should be sent")
+                        .index(4),
+                ),
+        )
+        .subcommand(
             SubCommand::with_name("history")
                 .about("Fetch historical data")
                 .arg(
@@ -109,8 +129,9 @@ async fn main() {
         let product = matches.value_of("product-id").unwrap_or(DEFAULT_PRODUCT);
         if let Some(tick) = get_tick(&product).await {
             println!("{} {:#?}", product, tick);
-            return;
+            std::process::exit(0);
         }
+        std::process::exit(1);
     }
 
     if let Some(matches) = matches.subcommand_matches("history") {
@@ -128,26 +149,39 @@ async fn main() {
             eprintln!("History command failed: {:?}", e);
             std::process::exit(1);
         };
-        return;
+        std::process::exit(0);
+    }
+
+    if let Some(matches) = matches.subcommand_matches("report") {
+        let start = matches.value_of("start").unwrap_or("");
+        let end = matches.value_of("end").unwrap_or("");
+        let account = matches.value_of("account-id").unwrap_or("");
+        let email = matches.value_of("email").unwrap_or("");
+        if let Some(r) = request_report(start, end, account, email).await {
+            println!("{:?}", r);
+            std::process::exit(0);
+        };
+        std::process::exit(1);
     }
 
     if let Some(matches) = matches.subcommand_matches("balance") {
         let currency = matches.value_of("currency");
         print_balance(currency).await;
-        return;
+        std::process::exit(0);
     }
 
     if let Some(_matches) = matches.subcommand_matches("payment-methods") {
         print_payment_methods().await;
-        return;
+        std::process::exit(0);
     }
 
     if let Some(matches) = matches.subcommand_matches("orders") {
         let product_id = matches.value_of("product-id");
         if let Some(orders) = list_orders(product_id).await {
             println!("{:#?}", orders);
+            std::process::exit(0);
         }
-        return;
+        std::process::exit(1);
     }
 
     if let Some(matches) = matches.subcommand_matches("deposit") {
@@ -168,7 +202,7 @@ async fn main() {
         if let Some(r) = make_deposit(&amount).await {
             println!("Successfully deposited ${} into Coinbase!", amount);
             println!("{:#?}", r);
-            return;
+            std::process::exit(0);
         }
         std::process::exit(1);
     }

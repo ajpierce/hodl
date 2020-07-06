@@ -82,6 +82,14 @@ pub struct PaymentMethod {
 }
 
 #[derive(Debug, Deserialize, Serialize)]
+pub struct ReportResponse {
+    id: String,
+    #[serde(rename = "type")]
+    type_name: String,
+    status: String,
+}
+
+#[derive(Debug, Deserialize, Serialize)]
 pub struct ApiError {
     message: String,
 }
@@ -98,6 +106,7 @@ pub enum ApiResponse {
     Orders(Vec<Order>),
     PaymentMethod(PaymentMethod),
     PaymentMethods(Vec<PaymentMethod>),
+    ReportResponse(ReportResponse),
     Tick(Tick),
 }
 
@@ -407,6 +416,52 @@ pub async fn get_history(
         thread::sleep(time::Duration::from_millis(1000));
     }
     Ok(())
+}
+
+pub async fn request_report(
+    start: &str,
+    end: &str,
+    account: &str,
+    email: &str,
+) -> Option<ReportResponse> {
+    let payload = format!(
+        r#"{{
+    "type": "account",
+    "start_date": "{start}",
+    "end_date": "{end}",
+    "account_id": "{account}",
+    "email": "{email}"
+}}"#,
+        start = start,
+        end = end,
+        account = account,
+        email = email,
+    );
+    let json: Value = match serde_json::from_str(&payload) {
+        Ok(j) => j,
+        Err(e) => {
+            eprintln!("Failed to parse the following as JSON:");
+            eprintln!("{}", payload);
+            eprintln!("{:?}", e);
+            return None;
+        }
+    };
+    let path = "/reports";
+    let body: String = json.to_string();
+    match post_request(path, body, json).await.unwrap() {
+        ApiResponse::ReportResponse(r) => Some(r),
+        ApiResponse::ApiError(e) => {
+            eprintln!(
+                "Report request failed; error from Coinbase API: {:?}",
+                e.message
+            );
+            None
+        }
+        _ => {
+            eprintln!("Report request failed for unknown reason");
+            None
+        }
+    }
 }
 
 #[cfg(test)]
