@@ -9,6 +9,7 @@ extern crate serde;
 extern crate serde_derive;
 extern crate url;
 
+use chrono::{Duration, Local};
 use clap::{App, Arg, SubCommand};
 use csv::Writer;
 use std::{env, io};
@@ -75,23 +76,23 @@ async fn main() {
         )
         .subcommand(
             SubCommand::with_name("report")
-                .about("Have coinbase email you a report")
-                .arg(
-                    Arg::with_name("start")
-                        .help("Start time in ISO 8601")
-                        .index(1),
-                )
-                .arg(Arg::with_name("end").help("End time in ISO 8601").index(2))
+                .about("Generate a coinbase report for a given account id.")
                 .arg(
                     Arg::with_name("account-id")
                         .help("The id of the account for which to generate a report")
-                        .index(3),
+                        .index(1),
                 )
                 .arg(
                     Arg::with_name("email")
                         .help("The email address to which the report should be sent")
-                        .index(4),
-                ),
+                        .index(2),
+                )
+                .arg(
+                    Arg::with_name("start")
+                        .help("Start time in ISO 8601")
+                        .index(3),
+                )
+                .arg(Arg::with_name("end").help("End time in ISO 8601").index(4)),
         )
         .subcommand(
             SubCommand::with_name("history")
@@ -150,18 +151,6 @@ async fn main() {
             std::process::exit(1);
         };
         std::process::exit(0);
-    }
-
-    if let Some(matches) = matches.subcommand_matches("report") {
-        let start = matches.value_of("start").unwrap_or("");
-        let end = matches.value_of("end").unwrap_or("");
-        let account = matches.value_of("account-id").unwrap_or("");
-        let email = matches.value_of("email").unwrap_or("");
-        if let Some(r) = request_report(start, end, account, email).await {
-            println!("{:?}", r);
-            std::process::exit(0);
-        };
-        std::process::exit(1);
     }
 
     if let Some(matches) = matches.subcommand_matches("balance") {
@@ -239,6 +228,23 @@ async fn main() {
                 std::process::exit(1);
             }
         };
+    }
+
+    if let Some(matches) = matches.subcommand_matches("report") {
+        let account = matches.value_of("account-id").unwrap_or("");
+        let email = matches.value_of("email").unwrap_or("");
+        let default_start = Local::now()
+            .checked_sub_signed(Duration::weeks(1))
+            .unwrap()
+            .to_string();
+        let start = matches.value_of("start").unwrap_or(&default_start[..]);
+        let default_end = Local::now().to_string();
+        let end = matches.value_of("end").unwrap_or(&default_end[..]);
+        if let Some(r) = request_report(start, end, account, email).await {
+            println!("{:?}", r);
+            std::process::exit(0);
+        };
+        std::process::exit(1);
     }
 
     eprintln!("Invalid input. Type help for more information");
