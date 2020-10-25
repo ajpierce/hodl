@@ -1,6 +1,6 @@
 [package]
 name = "hodl"
-version = "0.3.1"
+version = "0.3.2"
 edition = "2018"
 authors = ["Andrew J. Pierce <andrew.j.pierce@gmail.com>"]
 description = "A CLI tool for accumulating cryptocurrency through the Coinbase Pro API"
@@ -24,4 +24,3 @@ url = "2.1.1"
 
 [profile.release]
 lto = true
-strip = "symbols"
