@@ -234,7 +234,7 @@ async fn main() {
         let account = matches.value_of("account-id").unwrap_or("");
         let email = matches.value_of("email").unwrap_or("");
         let default_start = Local::now()
-            .checked_sub_signed(Duration::weeks(1))
+            .checked_sub_signed(Duration::weeks(4))
             .unwrap()
             .to_string();
         let start = matches.value_of("start").unwrap_or(&default_start[..]);
