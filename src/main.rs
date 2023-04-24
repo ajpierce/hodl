@@ -128,7 +128,7 @@ async fn main() {
 
     if let Some(matches) = matches.subcommand_matches("tick") {
         let product = matches.value_of("product-id").unwrap_or(DEFAULT_PRODUCT);
-        if let Some(tick) = get_tick(&product).await {
+        if let Some(tick) = get_tick(product).await {
             println!("{} {:#?}", product, tick);
             std::process::exit(0);
         }
@@ -142,7 +142,7 @@ async fn main() {
         let granularity = matches.value_of("granularity").unwrap_or("");
 
         let mut wtr = Writer::from_writer(io::stdout());
-        wtr.write_record(&["time", "low", "high", "open", "close", "volume"])
+        wtr.write_record(["time", "low", "high", "open", "close", "volume"])
             .expect("Failed to write CSV header");
         wtr.flush().expect("Failed to flush CSV writer");
 
@@ -218,7 +218,7 @@ async fn main() {
             }
         };
         println!("Purchasing ${} worth of {}...", amount, currency);
-        match place_order(&amount, &currency).await {
+        match place_order(&amount, currency).await {
             Some(r) => {
                 println!("Purchase successful!");
                 println!("{:#?}", r);

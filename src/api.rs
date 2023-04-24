@@ -151,7 +151,7 @@ fn build_request_headers(request_path: &str, method: &str, body: &str) -> Option
     };
 
     let message = format!("{}{}{}{}", timestamp, method, request_path, body);
-    let hmac_key = decode(&secret).expect("Failed to base64 decode Coinbase API secret");
+    let hmac_key = decode(secret).expect("Failed to base64 decode Coinbase API secret");
     let mut hmac = Hmac::new(Sha256::new(), &hmac_key);
     hmac.input(message.as_bytes());
     let signature = encode(hmac.result().code());
